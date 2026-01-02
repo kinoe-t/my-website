@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>聖誕音樂驚喜盒</title>
+    <style>
+        :root {
+            --red: #c0392b;
+            --green: #27ae60;
+            --gold: #f1c40f;
+            --white: #ecf0f1;
+        }
+
+        body {
+            background-color: #2c3e50;
+            color: var(--white);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        h1 { color: var(--gold); text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+
+        /* 聖誕老人與場景 */
+        .santa-container {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* 禮物盒樣式 */
+        .gift-area {
+            display: flex;
+            gap: 30px;
+            margin: 40px 0;
+            perspective: 1000px;
+        }
+
+        .gift-box {
+            width: 120px;
+            height: 120px;
+            background-color: var(--red);
+            position: relative;
+            cursor: pointer;
+            border: 4px solid #a93226;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 50px;
+            transition: transform 0.3s;
+            border-radius: 8px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+
+        /* 緞帶裝飾 */
+        .gift-box::before {
+            content: "";
+            position: absolute;
+            width: 20px;
+            height: 100%;
+            background-color: var(--gold);
+        }
+        .gift-box::after {
+            content: "";
+            position: absolute;
+            width: 100%;
+            height: 20px;
+            background-color: var(--gold);
+        }
+
+        /* 搖晃動畫 */
+        .shake {
+            animation: shake-animation 0.5s ease-in-out;
+        }
+
+        @keyframes shake-animation {
+            0% { transform: rotate(0); }
+            20% { transform: rotate(15deg); }
+            40% { transform: rotate(-15deg); }
+            60% { transform: rotate(10deg); }
+            80% { transform: rotate(-10deg); }
+            100% { transform: rotate(0); }
+        }
+
+        /* 播放器容器 */
+        #player-container {
+            margin-top: 30px;
+            width: 100%;
+            max-width: 560px;
+            text-align: center;
+            display: none;
+        }
+
+        .song-info {
+            background: var(--green);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        iframe {
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        /* 歌曲清單隱藏展示 */
+        .song-list-toggle {
+            margin-top: 50px;
+            color: #bdc3c7;
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        #song-list {
+            display: none;
+            max-width: 600px;
+            text-align: left;
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎅 聖誕驚喜點唱機</h1>
+    
+    <div class="santa-container">🎅</div>
+    <p>點擊一個禮物箱，讓聖誕老人為你選一首歌！</p>
+
+    <div class="gift-area">
+        <div class="gift-box" onclick="openGift(this)">🎁</div>
+        <div class="gift-box" onclick="openGift(this)">🎁</div>
+        <div class="gift-box" onclick="openGift(this)">🎁</div>
+    </div>
+
+    <div id="player-container">
+        <div class="song-info" id="song-title">準備播放...</div>
+        <div id="youtube-player"></div>
+    </div>
+
+    <div class="song-list-toggle" onclick="toggleList()">查看完整歌曲清單 (30首)</div>
+    <div id="song-list"></div>
+
+    <script>
+        // 30 首經典聖誕歌曲資料庫
+        const songs = [
+            { title: "Mariah Carey - All I Want For Christmas Is You", id: "aAkMkVFwAoo" },
+            { title: "Wham! - Last Christmas", id: "E8zu6VatMsc" },
+            { title: "Ariana Grande - Santa Tell Me", id: "nlR0MkrRekg" },
+            { title: "Michael Bublé - It's Beginning to Look a Lot Like Christmas", id: "QJ5DOWPGxwg" },
+            { title: "Bobby Helms - Jingle Bell Rock", id: "itcMLwMEeMQ" },
+            { title: "Brenda Lee - Rockin' Around The Christmas Tree", id: "D9X2-vL_20A" },
+            { title: "Andy Williams - It's the Most Wonderful Time of the Year", id: "gFtb3EtjEic" },
+            { title: "Jose Feliciano - Feliz Navidad", id: "N8NcQzMQN_U" },
+            { title: "Nat King Cole - The Christmas Song", id: "hwacxSnc4tI" },
+            { title: "Dean Martin - Let It Snow! Let It Snow! Let It Snow!", id: "mN7LW0Y00kE" },
+            { title: "Burl Ives - A Holly Jolly Christmas", id: "e_AMTbO50vU" },
+            { title: "Frank Sinatra - Jingle Bells", id: "hLf0-l7QuS4" },
+            { title: "Kelly Clarkson - Underneath the Tree", id: "YfF10owzS_I" },
+            { title: "Sia - Snowman", id: "gset79KMmt0" },
+            { title: "Justin Bieber - Mistletoe", id: "LUjn3RpkcKY" },
+            { title: "Pentatonix - Mary, Did You Know?", id: "ifCWN5pJGIE" },
+            { title: "John Lennon - Happy Xmas (War Is Over)", id: "z8Vfp48laS8" },
+            { title: "Band Aid - Do They Know It's Christmas?", id: "bjQzJAKxTrE" },
+            { title: "Elvis Presley - Blue Christmas", id: "3KK6sOt8NBY" },
+            { title: "Chuck Berry - Run Rudolph Run", id: "MVu4c79u_uM" },
+            { title: "Eartha Kitt - Santa Baby", id: "Mk_GmhD053E" },
+            { title: "The Ronettes - Sleigh Ride", id: "vw-7NAn6Xm4" },
+            { title: "Bing Crosby - White Christmas", id: "w9QLn7gM-Ak" },
+            { title: "Chris Rea - Driving Home for Christmas", id: "uSQuZ_Yf_7U" },
+            { title: "The Pogues - Fairytale Of New York", id: "j9jbdgZidu8" },
+            { title: "Gene Autry - Rudolph the Red-Nosed Reindeer", id: "7jr_K_D-H-c" },
+            { title: "Darlene Love - Christmas (Baby Please Come Home)", id: "4EvZOXEoJ84" },
+            { title: "Stevie Wonder - What Christmas Means to Me", id: "wtgGBgpLc6I" },
+            { title: "Carpenters - Merry Christmas Darling", id: "YR1ujXx2p-I" },
+            { title: "Celine Dion - O Holy Night", id: "7Jr-2eyRtV4" }
+        ];
+
+        // 初始化歌曲清單文字
+        const listDiv = document.getElementById('song-list');
+        songs.forEach((song, index) => {
+            const p = document.createElement('p');
+            p.innerHTML = `${index + 1}. ${song.title} <br> <small>https://www.youtube.com/watch?v=${song.id}</small>`;
+            listDiv.appendChild(p);
+        });
+
+        function toggleList() {
+            listDiv.style.display = listDiv.style.display === 'block' ? 'none' : 'block';
+        }
+
+        let isOpening = false;
+
+        function openGift(element) {
+            if (isOpening) return;
+            isOpening = true;
+
+            // 1. 播放搖晃動畫
+            element.classList.add('shake');
+            
+            // 2. 隨機選取歌曲
+            const randomSong = songs[Math.floor(Math.random() * songs.length)];
+
+            setTimeout(() => {
+                element.classList.remove('shake');
+                element.innerHTML = "✨";
+                
+                // 3. 顯示播放器並更新內容
+                const container = document.getElementById('player-container');
+                const titleDisplay = document.getElementById('song-title');
+                const playerDiv = document.getElementById('youtube-player');
+                
+                container.style.display = 'block';
+                titleDisplay.innerText = "正在為您播放： " + randomSong.title;
+                
+                // 嵌入 YouTube (加上 autoplay=1)
+                playerDiv.innerHTML = `
+                    <iframe width="100%" height="315" 
+                        src="https://www.youtube.com/embed/${randomSong.id}?autoplay=1" 
+                        title="YouTube video player" frameborder="0" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowfullscreen>
+                    </iframe>
+                `;
+                
+                // 滾動到播放器位置
+                container.scrollIntoView({ behavior: 'smooth' });
+                
+                isOpening = false;
+                
+                // 重置其他盒子
+                document.querySelectorAll('.gift-box').forEach(box => {
+                    if(box !== element) box.innerHTML = "🎁";
+                });
+            }, 800);
+        }
+    </script>
+</body>
+</html>
